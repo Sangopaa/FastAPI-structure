@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    image: inversions-tracker-image
+    container_name: inversions-tracker-app
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env_dev
+    command: fastapi dev main.py --host 0.0.0.0 --port 8000
+    stdin_open: true
+    tty: true
+  db:
+    image: postgres:15
+    container_name: inversions-tracker-db
+    restart: always
+    env_file:
+      - .env_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - inversions-tracker-volume:/var/lib/postgresql/data
+volumes:
+  inversions-tracker-volume:
+    name: 'inversions-tracker-volume'
