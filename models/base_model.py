@@ -10,7 +10,6 @@ class AutoTableMeta(SQLModelMetaclass):
             if "table" not in kwargs:
                 kwargs["table"] = True
 
-            # module format: models.subfolder.filename
             module_name = dct.get("__module__", "")
             if module_name.startswith("models."):
                 parts = module_name.split(".")
@@ -34,3 +33,5 @@ class BaseModel(SQLModel, metaclass=AutoTableMeta):
     id: UUID = Field(
         default_factory=uuid.uuid4, primary_key=True, index=True, nullable=False
     )
+
+    is_deleted: bool = Field(default=False)
