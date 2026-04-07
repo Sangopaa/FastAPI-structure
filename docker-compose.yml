@@ -1,8 +1,8 @@
 services:
   app:
     build: .
-    image: inversions-tracker-image
-    container_name: inversions-tracker-app
+    image: fastapi-structure-image
+    container_name: fastapi-structure-app
     volumes:
       - type: bind
         source: .
@@ -16,14 +16,14 @@ services:
     tty: true
   db:
     image: postgres:15
-    container_name: inversions-tracker-db
+    container_name: fastapi-structure-db
     restart: always
     env_file:
       - .env_dev
     ports:
       - "5433:5432"
     volumes:
-      - inversions-tracker-volume:/var/lib/postgresql/data
+      - fastapi-structure-volume:/var/lib/postgresql/data
 volumes:
-  inversions-tracker-volume:
-    name: 'inversions-tracker-volume'
+  fastapi-structure-volume:
+    name: 'fastapi-structure-volume'
