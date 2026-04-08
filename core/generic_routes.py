@@ -7,8 +7,11 @@ from uuid import UUID
 T = TypeVar("T", bound=SQLModel)
 
 
+from core.custom_route import StandardResponseRoute
+
 class GenericCRUDRouter(Generic[T], APIRouter):
     def __init__(self, model: Type[T], get_session, *args, **kwargs):
+        kwargs.setdefault("route_class", StandardResponseRoute)
         super().__init__(*args, **kwargs)
         self.model = model
         self.get_session = get_session

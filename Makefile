@@ -9,7 +9,7 @@ down:
 
 reset:
 	docker compose down -v
-	docker compose up
+	docker compose up --build
 
 run_migrations:
 	docker compose exec app alembic upgrade head
