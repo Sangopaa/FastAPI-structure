@@ -1,13 +1,15 @@
 import inspect
 from typing import Type, List, Generic, TypeVar, Any
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import SQLModel, Session, select
+from sqlmodel import SQLModel, Session
 from uuid import UUID
 
 T = TypeVar("T", bound=SQLModel)
 
 
-from core.custom_route import StandardResponseRoute
+from core.standard_response_route import StandardResponseRoute
+from repositories.base import BaseRepository
+
 
 class GenericCRUDRouter(Generic[T], APIRouter):
     def __init__(self, model: Type[T], get_session, *args, **kwargs):
@@ -15,6 +17,7 @@ class GenericCRUDRouter(Generic[T], APIRouter):
         super().__init__(*args, **kwargs)
         self.model = model
         self.get_session = get_session
+        self.repository = BaseRepository(self.model)
 
         self.add_api_route(
             "/",
@@ -69,10 +72,10 @@ class GenericCRUDRouter(Generic[T], APIRouter):
         return endpoint
 
     async def get_all(self, session: Session):
-        return session.exec(select(self.model)).all()
+        return self.repository.get_all(session)
 
     async def get_one(self, session: Session, id: UUID):
-        db_obj = session.get(self.model, id)
+        db_obj = self.repository.get_by_id(session, id)
         if not db_obj:
             raise HTTPException(
                 status_code=404, detail=f"{self.model.__name__} no encontrado"
@@ -80,22 +83,15 @@ class GenericCRUDRouter(Generic[T], APIRouter):
         return db_obj
 
     async def create(self, session: Session, obj: Any):
-        session.add(obj)
-        session.commit()
-        session.refresh(obj)
-        return obj
+        return self.repository.create(session, obj)
 
     async def delete(self, session: Session, id: UUID):
-        db_obj = session.get(self.model, id)
+        db_obj = self.repository.get_by_id(session, id)
 
-        if not db_obj or db_obj.is_deleted:
+        if not db_obj or getattr(db_obj, "is_deleted", False):
             raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-        db_obj.is_deleted = True
-
-        session.add(db_obj)
-        session.commit()
-        session.refresh(db_obj)
+        self.repository.delete(session, db_obj)
 
         return {
             "ok": True,
