@@ -22,3 +22,4 @@ install:
 
 install-dev:
 	.venv/bin/pip install -r requirements/dev.txt
+	.venv/bin/pre-commit install
