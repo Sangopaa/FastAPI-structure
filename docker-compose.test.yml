@@ -1,0 +1,32 @@
+services:
+  db_test:
+    image: postgres:15
+    container_name: fastapi-structure-db-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: test_db
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app_test:
+    build: .
+    image: fastapi-structure-image
+    container_name: fastapi-structure-app-test
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    env_file:
+      - .env.test
+    depends_on:
+      db_test:
+        condition: service_healthy
+    command: >
+      sh -c "pip install -r requirements/test.txt &&
+             pytest -v --tb=short"
