@@ -1,5 +1,5 @@
-import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class SecuritySettings(BaseSettings):
     google_client_id: str
@@ -10,5 +10,6 @@ class SecuritySettings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7  # 1 week
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 security_settings = SecuritySettings()

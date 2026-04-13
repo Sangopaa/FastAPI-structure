@@ -1,5 +1,5 @@
 import inspect
-from typing import Type, List, Generic, TypeVar, Any
+from typing import Type, Generic, TypeVar, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import SQLModel, Session
 from uuid import UUID
