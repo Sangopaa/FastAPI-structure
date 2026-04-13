@@ -23,20 +23,94 @@ The code is organized modularly and intentionally separated into different layer
 
 ## Getting Started
 
-### Google OAuth Setup
+### Prerequisites
 
-If you want to use the Google OAuth route provided in this skeleton:
+Make sure you have the following installed on your machine:
+
+- [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/)
+- [Python 3.11+](https://www.python.org/downloads/)
+- [Make](https://www.gnu.org/software/make/)
+
+---
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-username/your-repo.git
+cd your-repo
+```
+
+### 2. Set up your environment variables
+
+```bash
+cp .env_example .env
+```
+
+Open `.env` and fill in the required values:
+
+| Variable | Description |
+|---|---|
+| `POSTGRES_USER` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | PostgreSQL password |
+| `POSTGRES_DB` | Database name |
+| `CONNECTION_STRING` | Full DB URL for Docker (uses `db` hostname) |
+| `LOCAL_CONNECTION_STRING` | Full DB URL for local tools (uses `localhost:5433`) |
+| `JWT_SECRET` | A secure random string for JWT signing |
+| `GOOGLE_CLIENT_ID` | From Google Cloud Console (optional) |
+| `GOOGLE_CLIENT_SECRET` | From Google Cloud Console (optional) |
+| `GOOGLE_REDIRECT_URI` | OAuth callback URL (keep the default for local dev) |
+
+### 3. Create your virtual environment and install dependencies
+
+```bash
+python -m venv .venv
+make install-dev
+```
+
+This installs all production and development dependencies, and automatically registers the pre-commit git hooks (Black formatter, whitespace checks, etc.).
+
+### 4. Start the project
+
+```bash
+make up
+```
+
+This starts the FastAPI app and the PostgreSQL database via Docker Compose. The API will be available at:
+
+- **API:** `http://localhost:8000`
+- **Swagger docs:** `http://localhost:8000/docs`
+
+### 5. Run the database migrations
+
+Once the containers are running, apply the initial migrations:
+
+```bash
+make run_migrations
+```
+
+---
+
+### Makefile Commands Reference
+
+| Command | Description |
+|---|---|
+| `make up` | Start the project (Docker Compose) |
+| `make down` | Stop all containers |
+| `make reset` | Tear down volumes and rebuild from scratch |
+| `make run_migrations` | Apply pending Alembic migrations |
+| `make create_migrations message=<name>` | Generate a new Alembic migration |
+| `make install` | Install production dependencies into `.venv` |
+| `make install-dev` | Install all dependencies + register pre-commit hooks |
+
+---
+
+### Google OAuth Setup (Optional)
+
+If you want to use the built-in Google OAuth login route:
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 2. Create a Project, then configure your **OAuth consent screen**.
 3. Go to **Credentials** -> **Create Credentials** -> **OAuth client ID**.
 4. Choose **Web application** as the application type.
-5. In **Authorized redirect URIs**, add `http://localhost:8000/api/v1/auth/google/callback` (and optionally `http://127.0.0.1:8000/api/v1/auth/google/callback`).
-6. Copy the generated **Client ID** and **Client Secret** into your `.env` file under `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-
-### Initial Setup
-
-1. Clone or use this repository as the base for a new project.
-2. Copy `.env_example` to `.env` and configure your local credentials.
-3. Install dependencies or spin it up using predefined commands (via Docker or locally using `uvicorn main:app --reload`).
-4. Add new models in `models/`, run Alembic to reflect them, and add your APIs in the `api/` folder.
+5. In **Authorized redirect URIs**, add `http://localhost:8000/api/v1/auth/google/callback`.
+6. Copy the generated **Client ID** and **Client Secret** into your `.env` under `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
