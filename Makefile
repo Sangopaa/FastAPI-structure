@@ -16,4 +16,9 @@ run_migrations:
 
 create_migrations:
 	docker compose exec app alembic revision --autogenerate -m "$(message)"
-	
+
+install:
+	.venv/bin/pip install -r requirements/base.txt
+
+install-dev:
+	.venv/bin/pip install -r requirements/dev.txt
