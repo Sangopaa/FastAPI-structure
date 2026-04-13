@@ -3,7 +3,7 @@ from sqlmodel import Session
 
 from core.security import create_access_token, get_google_user_info
 from models.accounts.user import User
-from repositories.user import user_repository
+from repositories.accounts.user import user_repository
 from schemas.accounts.user import AuthRequest
 
 
@@ -27,7 +27,9 @@ class AuthService:
         token = create_access_token(subject=str(user.id))
         return user.model_dump(), token
 
-    def login_account(self, session: Session, email: str, password: str) -> tuple[dict, str]:
+    def login_account(
+        self, session: Session, email: str, password: str
+    ) -> tuple[dict, str]:
         user = self.user_repository.get_by_email(session, email)
 
         if not user:
@@ -80,5 +82,6 @@ class AuthService:
 
         token = create_access_token(subject=str(user.id))
         return user.model_dump(), token
+
 
 auth_service = AuthService()

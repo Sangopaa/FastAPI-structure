@@ -1,4 +1,4 @@
-include .env_dev
+include .env
 
 
 up:

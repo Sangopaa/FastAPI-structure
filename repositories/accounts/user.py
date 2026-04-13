@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlmodel import Session, select
 from models.accounts.user import User
-from .base import BaseRepository
+from repositories.base import BaseRepository
 
 class UserRepository(BaseRepository[User]):
     def __init__(self):

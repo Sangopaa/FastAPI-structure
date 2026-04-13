@@ -9,6 +9,7 @@ T = TypeVar("T", bound=SQLModel)
 
 from core.standard_response_route import StandardResponseRoute
 from repositories.base import BaseRepository
+from schemas.pagination import PaginatedResponse
 
 
 class GenericCRUDRouter(Generic[T], APIRouter):
@@ -23,7 +24,7 @@ class GenericCRUDRouter(Generic[T], APIRouter):
             "/",
             self._make_endpoint(self.get_all),
             methods=["GET"],
-            response_model=List[self.model],
+            response_model=PaginatedResponse[self.model],
         )
 
         self.add_api_route(
@@ -71,8 +72,9 @@ class GenericCRUDRouter(Generic[T], APIRouter):
         endpoint.__signature__ = sig.replace(parameters=parameters)
         return endpoint
 
-    async def get_all(self, session: Session):
-        return self.repository.get_all(session)
+    async def get_all(self, session: Session, skip: int = 0, limit: int = 100):
+        data, total = self.repository.get_all(session, skip=skip, limit=limit)
+        return {"data": data, "total": total, "skip": skip, "limit": limit}
 
     async def get_one(self, session: Session, id: UUID):
         db_obj = self.repository.get_by_id(session, id)
