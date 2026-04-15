@@ -16,8 +16,15 @@ import models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
+
+""" TRANSFORM ASYNC CONNECTION TO SYNC CONNECTION """
 config = context.config
-config.set_main_option("sqlalchemy.url", os.getenv("CONNECTION_STRING"))
+original_url = os.getenv("CONNECTION_STRING")
+if original_url and original_url.startswith("postgresql+asyncpg://"):
+    sync_url = original_url.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", sync_url)
+else:
+    config.set_main_option("sqlalchemy.url", original_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

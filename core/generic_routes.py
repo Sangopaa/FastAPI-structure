@@ -1,7 +1,8 @@
 import inspect
 from typing import Type, Generic, TypeVar, Any
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import SQLModel, Session
+from sqlmodel import SQLModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 T = TypeVar("T", bound=SQLModel)
@@ -51,7 +52,7 @@ class GenericCRUDRouter(Generic[T], APIRouter):
 
     def _make_endpoint(self, method):
         async def endpoint(
-            db_session: Session = Depends(self.get_session),
+            db_session: AsyncSession = Depends(self.get_session),
             **kwargs,
         ):
             kwargs["session"] = db_session
@@ -66,34 +67,34 @@ class GenericCRUDRouter(Generic[T], APIRouter):
                 "db_session",
                 inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 default=Depends(self.get_session),
-                annotation=Session,
+                annotation=AsyncSession,
             )
         )
         endpoint.__signature__ = sig.replace(parameters=parameters)
         return endpoint
 
-    async def get_all(self, session: Session, skip: int = 0, limit: int = 100):
-        data, total = self.repository.get_all(session, skip=skip, limit=limit)
+    async def get_all(self, session: AsyncSession, skip: int = 0, limit: int = 100):
+        data, total = await self.repository.get_all(session, skip=skip, limit=limit)
         return {"data": data, "total": total, "skip": skip, "limit": limit}
 
-    async def get_one(self, session: Session, id: UUID):
-        db_obj = self.repository.get_by_id(session, id)
+    async def get_one(self, session: AsyncSession, id: UUID):
+        db_obj = await self.repository.get_by_id(session, id)
         if not db_obj:
             raise HTTPException(
                 status_code=404, detail=f"{self.model.__name__} no encontrado"
             )
         return db_obj
 
-    async def create(self, session: Session, obj: Any):
-        return self.repository.create(session, obj)
+    async def create(self, session: AsyncSession, obj: Any):
+        return await self.repository.create(session, obj)
 
-    async def delete(self, session: Session, id: UUID):
-        db_obj = self.repository.get_by_id(session, id)
+    async def delete(self, session: AsyncSession, id: UUID):
+        db_obj = await self.repository.get_by_id(session, id)
 
         if not db_obj or getattr(db_obj, "is_deleted", False):
             raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-        self.repository.delete(session, db_obj)
+        await self.repository.delete(session, db_obj)
 
         return {
             "ok": True,

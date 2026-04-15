@@ -18,7 +18,7 @@ help:
 
 up: ## Start development containers
 	@echo "$(GREEN)Starting services...$(RESET)"
-	docker compose up -d
+	docker compose up
 
 down: ## Stop the containers
 	@echo "$(YELLOW)Stopping services...$(RESET)"
@@ -27,7 +27,7 @@ down: ## Stop the containers
 reset: ## Remove volumes, rebuild and start
 	@echo "$(YELLOW)Resetting Docker environment...$(RESET)"
 	docker compose down -v
-	docker compose up --build -d
+	docker compose up --build
 
 ## ── Database ──────────────────────────────────────────────────────────────
 

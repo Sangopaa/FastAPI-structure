@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import create_access_token, get_google_user_info
 from models.accounts.user import User
@@ -11,8 +11,10 @@ class AuthService:
     def __init__(self):
         self.user_repository = user_repository
 
-    def create_account(self, session: Session, data: AuthRequest) -> tuple[dict, str]:
-        user = self.user_repository.get_by_email(session, data.email)
+    async def create_account(
+        self, session: AsyncSession, data: AuthRequest
+    ) -> tuple[dict, str]:
+        user = await self.user_repository.get_by_email(session, data.email)
 
         if user:
             raise HTTPException(
@@ -22,15 +24,15 @@ class AuthService:
 
         user = User(email=data.email)
         user.set_password(password=data.password)
-        user = self.user_repository.create(session, user)
+        user = await self.user_repository.create(session, user)
 
         token = create_access_token(subject=str(user.id))
         return user.model_dump(), token
 
-    def login_account(
-        self, session: Session, email: str, password: str
+    async def login_account(
+        self, session: AsyncSession, email: str, password: str
     ) -> tuple[dict, str]:
-        user = self.user_repository.get_by_email(session, email)
+        user = await self.user_repository.get_by_email(session, email)
 
         if not user:
             raise HTTPException(
@@ -47,7 +49,9 @@ class AuthService:
         token = create_access_token(subject=str(user.id))
         return user.model_dump(), token
 
-    async def handle_google_auth(self, session: Session, code: str) -> tuple[dict, str]:
+    async def handle_google_auth(
+        self, session: AsyncSession, code: str
+    ) -> tuple[dict, str]:
         google_user = await get_google_user_info(code)
 
         email = google_user.get("email")
@@ -61,13 +65,13 @@ class AuthService:
                 detail="Email not provided by Google",
             )
 
-        user = self.user_repository.get_by_email(session, email)
+        user = await self.user_repository.get_by_email(session, email)
 
         if not user:
             user = User(
                 email=email, google_id=google_id, full_name=name, avatar_url=picture
             )
-            user = self.user_repository.create(session, user)
+            user = await self.user_repository.create(session, user)
         else:
             update_needed = False
             if not user.google_id:
@@ -78,7 +82,7 @@ class AuthService:
                 update_needed = True
 
             if update_needed:
-                self.user_repository.update(session, user, user)
+                await self.user_repository.update(session, user, user)
 
         token = create_access_token(subject=str(user.id))
         return user.model_dump(), token

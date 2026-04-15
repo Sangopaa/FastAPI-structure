@@ -1,6 +1,6 @@
 from fastapi import Depends, Response
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
 from core.custom_router import CustomRouter
@@ -30,18 +30,21 @@ def set_auth_cookie(response: Response, token: str):
 async def create_account(
     data: AuthRequest,
     response: Response,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ):
-    user_data, token = auth_service.create_account(session, data)
+    user_data, token = await auth_service.create_account(session, data)
     set_auth_cookie(response, token)
     return {"message": "Successfully authenticated.", "user": user_data}
 
 
 @router.post("/login", summary="Login Account")
 async def login_account(
-    email: str, password: str, response: Response, session=Depends(get_session)
+    email: str,
+    password: str,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
 ):
-    user_data, token = auth_service.login_account(session, email, password)
+    user_data, token = await auth_service.login_account(session, email, password)
     set_auth_cookie(response, token)
     return {"message": "Successfully authenticated.", "user": user_data}
 
@@ -58,10 +61,9 @@ async def login_google():
 
 @router.get("/google/callback", summary="Google OAuth Callback")
 async def gogole_auth_callback(
-    code: str, response: Response, session: Session = Depends(get_session)
+    code: str, response: Response, session: AsyncSession = Depends(get_session)
 ) -> Any:
     """Handles Google OAuth callback, creates or fetches user, and sets HttpOnly cookie"""
     user_data, token = await auth_service.handle_google_auth(session, code)
     set_auth_cookie(response, token)
     return {"message": "Successfully authenticated.", "user": user_data}
-
