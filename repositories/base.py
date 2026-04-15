@@ -11,9 +11,30 @@ class BaseRepository(Generic[T]):
         self.model = model
 
     async def get_all(
-        self, session: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
+        filter_by: Optional[str] = None,
+        filter_value: Optional[Any] = None,
     ) -> Tuple[List[T], int]:
-        query = select(self.model).where(self.model.is_deleted == False)
+        query = select(self.model)
+
+        if hasattr(self.model, "is_deleted"):
+            query = query.where(self.model.is_deleted == False)
+
+        if filter_by and hasattr(self.model, filter_by) and filter_value is not None:
+            column = getattr(self.model, filter_by)
+            query = query.where(column == filter_value)
+
+        if sort_by and hasattr(self.model, sort_by):
+            column = getattr(self.model, sort_by)
+            if sort_order.lower() == "desc":
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
 
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await session.execute(count_query)

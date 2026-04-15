@@ -1,5 +1,5 @@
 import inspect
-from typing import Type, Generic, TypeVar, Any
+from typing import Type, Generic, TypeVar, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,8 +73,25 @@ class GenericCRUDRouter(Generic[T], APIRouter):
         endpoint.__signature__ = sig.replace(parameters=parameters)
         return endpoint
 
-    async def get_all(self, session: AsyncSession, skip: int = 0, limit: int = 100):
-        data, total = await self.repository.get_all(session, skip=skip, limit=limit)
+    async def get_all(
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
+        filter_by: Optional[str] = None,
+        filter_value: Optional[str] = None,
+    ):
+        data, total = await self.repository.get_all(
+            session,
+            skip=skip,
+            limit=limit,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            filter_by=filter_by,
+            filter_value=filter_value,
+        )
         return {"data": data, "total": total, "skip": skip, "limit": limit}
 
     async def get_one(self, session: AsyncSession, id: UUID):
