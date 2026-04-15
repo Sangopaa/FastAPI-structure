@@ -1,85 +1,88 @@
 import os
-
 import pytest
+import asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import text
-from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
 # Ensure all models are registered in SQLModel.metadata before create_all
-import models  # noqa: F401
-
+import models
 from configurations.database import get_session
 from main import app
 
 
 # ---------------------------------------------------------------------------
-# Database fixtures
+# Asynchronous Database Fixtures
 #
-# Uses the PostgreSQL test container (CONNECTION_STRING from .env.test).
-# AutoTableMeta assigns schemas based on the model module path (e.g. `accounts`),
-# so SQLite cannot be used — schemas are a PostgreSQL-only feature.
+# Configures the test environment for a 100% asynchronous flow using
+# SQLAlchemy AsyncIO and the asyncpg driver.
 #
-# Flow per test session:
-#   1. Connect to db_test (PostgreSQL container)
-#   2. Create all required schemas
-#   3. Create all tables via SQLModel.metadata.create_all
-#   4. Yield engine
-#   5. Drop all tables at teardown
+# NOTE ON SCHEMAS:
+# AutoTableMeta assigns PostgreSQL schemas based on model paths (e.g., `accounts`).
+# Because schemas are a PostgreSQL-specific feature, SQLite is NOT supported.
+#
+# Test Session Lifecycle:
+#   1. Event Loop: Initializes a session-scoped asyncio event loop.
+#   2. Engine: Creates an `AsyncEngine` using the `+asyncpg` dialect.
+#   3. Schemas: Asynchronously ensures all unique schemas exist in the DB.
+#   4. Tables: Maps `SQLModel.metadata.create_all` via `conn.run_sync` to
+#      bridge synchronous metadata definition with the async connection.
+#   5. Injection: Overrides `get_session` to provide an `AsyncSession`
+#      with automatic rollback per test to ensure isolation.
+#   6. Cleanup: Drops all tables and disposes of the engine at teardown.
 # ---------------------------------------------------------------------------
 
 
-def _get_schemas_from_metadata() -> set[str]:
-    """Collect all unique schema names declared across registered models."""
-    schemas = set()
-    for table in SQLModel.metadata.tables.values():
-        if table.schema:
-            schemas.add(table.schema)
-    return schemas
-
-
 @pytest.fixture(name="engine", scope="session")
-def engine_fixture():
-    """
-    Creates a PostgreSQL engine pointing to the isolated test database.
-    Creates required schemas and all tables before yielding.
-    """
+async def engine_fixture():
     connection_string = os.environ.get("CONNECTION_STRING")
     if not connection_string:
-        raise RuntimeError(
-            "CONNECTION_STRING is not set. "
-            "Make sure .env.test is loaded (via docker-compose.test.yml or locally)."
-        )
+        raise RuntimeError("CONNECTION_STRING is not set in .env.test")
 
-    engine = create_engine(connection_string, pool_pre_ping=True)
+    # Usar el motor asíncrono
+    engine = create_async_engine(connection_string, pool_pre_ping=True)
 
-    with engine.connect() as conn:
-        for schema in _get_schemas_from_metadata():
-            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
-        conn.commit()
+    # Crear esquemas y tablas
+    async with engine.begin() as conn:
+        # Extraer esquemas únicos de los modelos
+        schemas = set(t.schema for t in SQLModel.metadata.tables.values() if t.schema)
+        for schema in schemas:
+            await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
 
-    SQLModel.metadata.create_all(engine)
+        # SQLModel.metadata.create_all necesita ejecutarse vía run_sync
+        await conn.run_sync(SQLModel.metadata.create_all)
+
     yield engine
-    SQLModel.metadata.drop_all(engine)
+
+    # Limpieza al terminar los tests
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest.fixture(name="session")
-def session_fixture(engine):
-    """
-    Provides a clean Session per test with automatic rollback.
-    """
-    with Session(engine) as session:
+async def session_fixture(engine):
+    """Proporciona una AsyncSession limpia por test."""
+    async_session_maker = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with async_session_maker() as session:
         yield session
-        session.rollback()
+        # Rollback automático para que un test no ensucie al siguiente
+        await session.rollback()
 
 
 @pytest.fixture(name="client")
-async def client_fixture(session: Session):
+async def client_fixture(session: AsyncSession):
     """
-    Provides an async HTTP test client with the real FastAPI app.
-    Overrides `get_session` to inject the isolated test session.
+    Inyecta la sesión de test asíncrona en la app.
     """
 
-    def override_get_session():
+    # Sobrescribimos la dependencia original
+    async def override_get_session():
         yield session
 
     app.dependency_overrides[get_session] = override_get_session
