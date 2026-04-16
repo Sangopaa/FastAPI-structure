@@ -3,7 +3,6 @@ from typing import Type, Generic, TypeVar, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from uuid import UUID
 
 T = TypeVar("T", bound=SQLModel)

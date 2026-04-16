@@ -8,7 +8,11 @@ from core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
     general_exception_handler,
+    integrity_error_handler,
+    no_result_found_handler,
+    data_error_handler,
 )
+from sqlalchemy.exc import IntegrityError, NoResultFound, DataError
 
 app = FastAPI(title="FastAPI Structure")
 
@@ -25,6 +29,9 @@ app.include_router(v1_router, prefix="/api/v1")
 # Exception Handlers
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(IntegrityError, integrity_error_handler)
+app.add_exception_handler(NoResultFound, no_result_found_handler)
+app.add_exception_handler(DataError, data_error_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 
