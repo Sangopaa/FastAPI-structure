@@ -82,7 +82,8 @@ class AuthService:
                 update_needed = True
 
             if update_needed:
-                await self.user_repository.update(session, user, user)
+                await session.commit()
+                await session.refresh(user)
 
         token = create_access_token(subject=str(user.id))
         return user.model_dump(), token

@@ -72,7 +72,13 @@ class BaseRepository(Generic[T]):
 
     async def update(self, session: AsyncSession, db_obj: T, obj_in: Any) -> T:
         obj_data = (
-            obj_in if isinstance(obj_in, dict) else obj_in.dict(exclude_unset=True)
+            obj_in
+            if isinstance(obj_in, dict)
+            else (
+                obj_in.model_dump(exclude_unset=True)
+                if hasattr(obj_in, "model_dump")
+                else obj_in.dict(exclude_unset=True)
+            )
         )
         for field, value in obj_data.items():
             if hasattr(db_obj, field):
