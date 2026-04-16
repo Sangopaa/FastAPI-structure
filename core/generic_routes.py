@@ -3,6 +3,7 @@ from typing import Type, Generic, TypeVar, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from uuid import UUID
 
 T = TypeVar("T", bound=SQLModel)
@@ -14,32 +15,42 @@ from schemas.pagination import PaginatedResponse
 
 
 class GenericCRUDRouter(Generic[T], APIRouter):
-    def __init__(self, model: Type[T], get_session, *args, **kwargs):
+    def __init__(
+        self,
+        model: Type[T],
+        get_session,
+        schema_create: Optional[Type[Any]] = None,
+        schema_read: Optional[Type[Any]] = None,
+        *args,
+        **kwargs,
+    ):
         kwargs.setdefault("route_class", StandardResponseRoute)
         super().__init__(*args, **kwargs)
         self.model = model
         self.get_session = get_session
+        self.schema_create = schema_create or model
+        self.schema_read = schema_read or model
         self.repository = BaseRepository(self.model)
 
         self.add_api_route(
             "/",
             self._make_endpoint(self.get_all),
             methods=["GET"],
-            response_model=PaginatedResponse[self.model],
+            response_model=PaginatedResponse[self.schema_read],
         )
 
         self.add_api_route(
             "/{id}",
             self._make_endpoint(self.get_one),
             methods=["GET"],
-            response_model=self.model,
+            response_model=self.schema_read,
         )
 
         self.add_api_route(
             "/",
             self._make_endpoint(self.create),
             methods=["POST"],
-            response_model=self.model,
+            response_model=self.schema_read,
             status_code=status.HTTP_201_CREATED,
         )
 
@@ -59,9 +70,14 @@ class GenericCRUDRouter(Generic[T], APIRouter):
             return await method(**kwargs)
 
         sig = inspect.signature(method)
-        parameters = [
-            p for p in sig.parameters.values() if p.name not in ["self", "session"]
-        ]
+        parameters = []
+        for p in sig.parameters.values():
+            if p.name in ["self", "session"]:
+                continue
+            if p.name == "obj":
+                parameters.append(p.replace(annotation=self.schema_create))
+            else:
+                parameters.append(p)
         parameters.append(
             inspect.Parameter(
                 "db_session",

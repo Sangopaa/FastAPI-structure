@@ -1,5 +1,5 @@
-from typing import Optional
-from sqlmodel import Field
+from typing import Optional, List
+from sqlmodel import Field, Relationship
 from models.base_model import BaseModel
 from passlib.context import CryptContext
 
@@ -14,6 +14,7 @@ class User(BaseModel):
     google_id: Optional[str] = Field(default=None, index=True, nullable=True)
     avatar_url: Optional[str] = None
     is_active: bool = Field(default=True)
+    notes: List["Note"] = Relationship(back_populates="author")
 
     def set_password(self, password: str):
         """Hash password"""

@@ -52,11 +52,23 @@ class BaseRepository(Generic[T]):
         result = await session.execute(query)
         return result.scalars().first()
 
-    async def create(self, session: AsyncSession, obj_in: T) -> T:
-        session.add(obj_in)
+    async def create(self, session: AsyncSession, obj_in: Any) -> T:
+        if isinstance(obj_in, dict):
+            db_obj = self.model(**obj_in)
+        elif not isinstance(obj_in, self.model):
+            obj_data = (
+                obj_in.model_dump(exclude_unset=True)
+                if hasattr(obj_in, "model_dump")
+                else obj_in.dict(exclude_unset=True)
+            )
+            db_obj = self.model(**obj_data)
+        else:
+            db_obj = obj_in
+
+        session.add(db_obj)
         await session.commit()
-        await session.refresh(obj_in)
-        return obj_in
+        await session.refresh(db_obj)
+        return db_obj
 
     async def update(self, session: AsyncSession, db_obj: T, obj_in: Any) -> T:
         obj_data = (
