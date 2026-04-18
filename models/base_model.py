@@ -1,7 +1,11 @@
 import uuid
 from uuid import UUID
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column, DateTime
 from sqlmodel.main import SQLModelMetaclass
+from sqlalchemy import ForeignKey
+
+from datetime import datetime, timezone
+from typing import Optional
 
 
 class AutoTableMeta(SQLModelMetaclass):
@@ -34,4 +38,37 @@ class BaseModel(SQLModel, metaclass=AutoTableMeta):
         default_factory=uuid.uuid4, primary_key=True, index=True, nullable=False
     )
 
-    is_deleted: bool = Field(default=False)
+    is_deleted: bool = Field(default=False, description="Soft delete flag")
+    is_active: bool = Field(default=False, description="Show if the row is available")
+
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+    updated_at: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True),
+            onupdate=lambda: datetime.now(timezone.utc),
+            nullable=True,
+        ),
+    )
+
+    created_by: Optional[UUID] = Field(
+        default=None,
+        sa_column=Column(
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        description="UUID of the user who created this record",
+    )
+
+    updated_by: Optional[UUID] = Field(
+        default=None,
+        sa_column=Column(
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        description="UUID of the user who last updated this record",
+    )
